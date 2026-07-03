@@ -21,4 +21,30 @@ router.put('/', (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// POST /api/settings/reset
+router.post('/reset', async (req, res) => {
+  try {
+    // 1. Create a backup first as a safety measure
+    const fs = require('fs');
+    const path = require('path');
+    const backupDir = path.join(__dirname, '..', '..', 'backup');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(backupDir, `pre_reset_backup_${timestamp}.db`);
+    
+    // Perform backup synchronously or wait for it
+    await db.backup(backupPath);
+
+    // 2. Clear sales and expenses
+    db.prepare('DELETE FROM sales').run();
+    db.prepare('DELETE FROM expenses').run();
+
+    res.json({ success: true, message: 'All sales and expenses history wiped successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

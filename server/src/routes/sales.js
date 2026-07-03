@@ -25,9 +25,9 @@ router.get('/', (req, res) => {
     }
 
     // Date filter
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toLocaleDateString('en-CA');
     const monthStart = today.substring(0, 7) + '-01';
 
     if (filter === 'today') {

@@ -42,13 +42,17 @@ export const api = {
   // Settings
   getSettings: () => request('/settings'),
   updateSettings: (data) => request('/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  resetDatabase: () => request('/settings/reset', { method: 'POST' }),
 
   // Search
   search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
   // AI API
-  uploadToAI: async (file) => {
+  uploadToAI: async (file, prompt = '') => {
     const formData = new FormData();
     formData.append('file', file);
+    if (prompt) {
+      formData.append('prompt', prompt);
+    }
     const res = await fetch(`${API_BASE}/ai/upload`, {
       method: 'POST',
       body: formData,

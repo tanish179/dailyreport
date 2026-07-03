@@ -29,12 +29,13 @@ export default function ReportsPage() {
     const { jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
     const doc = new jsPDF();
-    doc.setFontSize(18); doc.text('Business Report', 14, 22);
-    doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 30);
+    doc.setFontSize(20); doc.setTextColor(99, 102, 241); doc.text("Mainframe Computers", 14, 18);
+    doc.setFontSize(12); doc.setTextColor(100, 116, 139); doc.text('Business Report', 14, 26);
+    doc.setFontSize(10); doc.setTextColor(0, 0, 0); doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 32);
     const m = data.metrics;
-    const formatPdfCurrency = (val) => formatCurrency(val).replace(/,/g, '').replace('₹', 'Rs. ');
+    const formatPdfCurrency = (val) => formatCurrency(val).replace(/,/g, '').replace('₹', 'Rs. ') + '/-';
     autoTable(doc, {
-      startY: 38, head: [['Metric', 'Value']],
+      startY: 36, head: [['Metric', 'Value']],
       body: [
         ['Total Sales', formatPdfCurrency(m.totalSales)],
         ['Net Profit', formatPdfCurrency(m.netProfit)],
@@ -62,6 +63,19 @@ export default function ReportsPage() {
   const exportExcel = async () => {
     const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
+    
+    // Create Summary sheet with Company Name
+    const summaryData = [
+      { Metric: 'Company', Value: 'Mainframe Computers' },
+      { Metric: 'Report Type', Value: 'Business Financial Report' },
+      { Metric: 'Generated At', Value: new Date().toLocaleString('en-IN') },
+      { Metric: 'Total Sales', Value: data.metrics.totalSales },
+      { Metric: 'Total Expenses', Value: data.metrics.totalExpenses },
+      { Metric: 'Net Profit', Value: data.metrics.netProfit }
+    ];
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
     if (data.salesData?.length) {
       const ws = XLSX.utils.json_to_sheet(data.salesData.map(s => ({ Date: s.date, Customer: s.customer_name, Product: s.product_service, Category: s.category, Amount: s.amount, Payment: s.payment_method, Invoice: s.invoice_number || '' })));
       XLSX.utils.book_append_sheet(wb, ws, 'Sales');
@@ -90,6 +104,16 @@ export default function ReportsPage() {
     { label: 'Transactions', value: m?.totalTransactions || 0, isCurrency: false },
     { label: 'Total Expenses', value: formatCurrency(m?.totalExpenses || 0), color: 'var(--accent-rose)' },
   ];
+
+  const filteredPaymentBreakdown = (data?.charts?.paymentBreakdown || []).filter(
+    item => ['Cash', 'UPI', 'Credit'].includes(item.name)
+  );
+
+  const PAYMENT_COLOR_MAP = {
+    Cash: '#10b981',
+    UPI: '#3b82f6',
+    Credit: '#f43f5e'
+  };
 
   return (
     <div className="page-enter page-enter-active">
@@ -149,7 +173,15 @@ export default function ReportsPage() {
         <div style={chartCard}>
           <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '1rem' }}>Payment Breakdown</div>
           <ResponsiveContainer width="100%" height={220}>
-            <PieChart><Pie data={data?.charts?.paymentBreakdown || []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>{(data?.charts?.paymentBreakdown || []).map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}</Pie><Tooltip /><Legend wrapperStyle={{ fontSize: '0.72rem' }} /></PieChart>
+            <PieChart>
+              <Pie data={filteredPaymentBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>
+                {filteredPaymentBreakdown.map((entry, i) => (
+                  <Cell key={i} fill={PAYMENT_COLOR_MAP[entry.name] || '#6366f1'} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: '0.72rem' }} />
+            </PieChart>
           </ResponsiveContainer>
         </div>
       </div>

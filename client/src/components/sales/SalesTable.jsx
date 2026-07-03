@@ -9,7 +9,7 @@ export default function SalesTable({
   onPageChange, onEdit, onDelete, onCustomerClick
 }) {
   const paymentBadge = (m) => {
-    const map = { Cash: 'badge-emerald', UPI: 'badge-blue', Card: 'badge-amber', 'Bank Transfer': 'badge-violet' };
+    const map = { Cash: 'badge-emerald', UPI: 'badge-blue', Card: 'badge-amber', 'Bank Transfer': 'badge-violet', Credit: 'badge-rose' };
     return map[m] || 'badge-blue';
   };
 

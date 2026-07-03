@@ -32,6 +32,28 @@ export default function SettingsPage() {
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 
+  const handleReset = async () => {
+    const firstConfirm = window.confirm(
+      "WARNING: This will permanently delete all sales and expenses records.\n\nA safety backup will be created in your backup directory before the wipe.\n\nAre you sure you want to proceed?"
+    );
+    if (!firstConfirm) return;
+
+    const secondConfirm = window.confirm(
+      "Are you ABSOLUTELY sure? This action is irreversible."
+    );
+    if (!secondConfirm) return;
+
+    try {
+      const res = await api.resetDatabase();
+      toast.success(res.message || 'Database reset successfully!');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (e) {
+      toast.error(e.message || 'Failed to reset database.');
+    }
+  };
+
   if (loading) return <div><h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem' }}>Settings</h1><div className="skeleton" style={{ height: 300 }} /></div>;
 
   return (
@@ -79,6 +101,36 @@ export default function SettingsPage() {
               cursor: 'pointer', transition: 'all 0.2s'
             }}>
               {settings.theme === 'dark' ? <Moon size={20} style={{ color: 'var(--accent-blue)' }} /> : <Sun size={20} style={{ color: '#f59e0b' }} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="glass-card" style={{ padding: '1.5rem', marginTop: '1.5rem', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.02)' }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--accent-rose)' }}>Danger Zone</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+            Permanently delete all sales and expenses records to start fresh. This action will automatically create a backup in the backup folder before wiping.
+          </p>
+          <div>
+            <button 
+              onClick={handleReset} 
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)', 
+                color: 'var(--accent-rose)', 
+                border: '1px solid var(--accent-rose)',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius)',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-rose)'; e.currentTarget.style.color = '#ffffff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = 'var(--accent-rose)'; }}
+            >
+              Reset Dashboard Data
             </button>
           </div>
         </div>

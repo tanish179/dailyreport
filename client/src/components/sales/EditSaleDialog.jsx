@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Save, X } from 'lucide-react';
 import { SALE_CATEGORIES, PAYMENT_METHODS } from '../../lib/constants';
 import { api } from '../../lib/api';
+import AutocompleteInput from './AutocompleteInput';
 
 export default function EditSaleDialog({ sale, onSave, onClose }) {
   const [form, setForm] = useState({ ...sale });
@@ -47,10 +48,12 @@ export default function EditSaleDialog({ sale, onSave, onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label className="form-label">Customer Name</label>
-              <input className="form-input" value={form.customer_name} onChange={e => set('customer_name', e.target.value)} list="edit-customers-list" />
-              <datalist id="edit-customers-list">
-                {customers.map(c => <option key={c} value={c} />)}
-              </datalist>
+              <AutocompleteInput
+                value={form.customer_name}
+                onChange={val => set('customer_name', val)}
+                suggestions={customers}
+                placeholder="Customer name"
+              />
             </div>
             <div><label className="form-label">Product / Service</label><input className="form-input" value={form.product_service} onChange={e => set('product_service', e.target.value)} /></div>
             <div><label className="form-label">Amount (₹)</label><input className="form-input" type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} /></div>

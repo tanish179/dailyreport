@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
 import { SALE_CATEGORIES, PAYMENT_METHODS, getTodayDate } from '../../lib/constants';
 import { api } from '../../lib/api';
+import AutocompleteInput from './AutocompleteInput';
 
 const initial = {
   customer_name: '', product_service: '',
@@ -65,10 +66,13 @@ export default function SaleForm({ onSubmit }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
           <div>
             <label className="form-label">Customer Name *</label>
-            <input className="form-input" value={form.customer_name} onChange={e => set('customer_name', e.target.value)} placeholder="Customer name" list="customers-list" style={errors.customer_name ? { borderColor: 'var(--accent-rose)' } : {}} />
-            <datalist id="customers-list">
-              {customers.map(c => <option key={c} value={c} />)}
-            </datalist>
+            <AutocompleteInput
+              value={form.customer_name}
+              onChange={val => set('customer_name', val)}
+              suggestions={customers}
+              placeholder="Customer name"
+              error={!!errors.customer_name}
+            />
             {errors.customer_name && <span style={{ fontSize: '0.7rem', color: 'var(--accent-rose)' }}>{errors.customer_name}</span>}
           </div>
           <div>

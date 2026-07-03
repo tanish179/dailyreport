@@ -43,23 +43,17 @@ function formatXDate(str) {
 export default function DashboardCharts({ data }) {
   if (!data) return null;
 
-  const { dailySales, dailyExpenses, monthlyRevenue, monthlyExpenseData, paymentDistribution, salesByCategory, expensesByCategory } = data;
+  const { dailySales, paymentDistribution } = data;
 
   const filteredPaymentDistribution = paymentDistribution?.filter(
-    item => item.name !== 'Card' && item.name !== 'Credit Card'
+    item => ['Cash', 'UPI', 'Credit'].includes(item.name)
   );
 
-  // Merge daily data for combined trend
-  const dailyMap = {};
-  dailySales?.forEach(d => { dailyMap[d.date] = { ...dailyMap[d.date], date: d.date, sales: d.total }; });
-  dailyExpenses?.forEach(d => { dailyMap[d.date] = { ...dailyMap[d.date], date: d.date, expenses: d.total }; });
-  const dailyCombined = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
-
-  // Merge monthly data
-  const monthlyMap = {};
-  monthlyRevenue?.forEach(d => { monthlyMap[d.month] = { ...monthlyMap[d.month], month: d.month, sales: d.total }; });
-  monthlyExpenseData?.forEach(d => { monthlyMap[d.month] = { ...monthlyMap[d.month], month: d.month, expenses: d.total }; });
-  const monthlyCombined = Object.values(monthlyMap).sort((a, b) => a.month.localeCompare(b.month));
+  const PAYMENT_COLOR_MAP = {
+    Cash: '#10b981',   // Emerald/Green
+    UPI: '#3b82f6',    // Blue
+    Credit: '#f43f5e'  // Rose/Red
+  };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1rem' }}>
@@ -83,30 +77,14 @@ export default function DashboardCharts({ data }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Monthly Revenue vs Expenses */}
-      <div style={chartCardStyle}>
-        <div style={titleStyle}>Monthly Revenue vs Expenses</div>
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={monthlyCombined}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.25)" />
-            <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={11} />
-            <YAxis stroke="var(--text-muted)" fontSize={11} />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-            <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} name="Sales" />
-            <Bar dataKey="expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} name="Expenses" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
       {/* Payment Method Distribution */}
       <div style={chartCardStyle}>
         <div style={titleStyle}>Payment Method Distribution</div>
         <ResponsiveContainer width="100%" height={250}>
           <PieChart>
             <Pie data={filteredPaymentDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={3} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={11}>
-              {filteredPaymentDistribution?.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              {filteredPaymentDistribution?.map((entry, i) => (
+                <Cell key={i} fill={PAYMENT_COLOR_MAP[entry.name] || '#6366f1'} />
               ))}
             </Pie>
             <Tooltip />

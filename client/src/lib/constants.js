@@ -8,7 +8,7 @@ export const EXPENSE_CATEGORIES = [
   'Internet', 'Spare Parts', 'Marketing', 'Stationery', 'Maintenance', 'Miscellaneous'
 ];
 
-export const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Bank Transfer'];
+export const PAYMENT_METHODS = ['Cash', 'UPI', 'Credit'];
 
 export const DATE_FILTERS = [
   { value: 'today', label: 'Today' },

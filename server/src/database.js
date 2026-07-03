@@ -11,8 +11,9 @@ fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
 
-// Enable WAL mode for better performance
+// Enable WAL mode for better performance and crash-safety
 db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
 
 // Create tables
@@ -70,5 +71,67 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
   CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor_name);
 `);
+
+// Run automatic monthly backup check on startup
+try {
+  const now = new Date();
+  now.setDate(1);
+  now.setMonth(now.getMonth() - 1);
+  const prevYear = now.getFullYear();
+  const prevMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const prevMonthStr = `${prevYear}-${prevMonth}`; // "YYYY-MM"
+
+  // Check if there are sales or expenses from that month
+  const saleCount = db.prepare(`SELECT COUNT(*) as count FROM sales WHERE date LIKE ?`).get(`${prevMonthStr}%`).count;
+  const expenseCount = db.prepare(`SELECT COUNT(*) as count FROM expenses WHERE date LIKE ?`).get(`${prevMonthStr}%`).count;
+
+  if (saleCount > 0 || expenseCount > 0) {
+    const filename = `mainframe_monthly_${prevMonthStr}.db`;
+    const backupPath = path.join(BACKUP_DIR, filename);
+    if (!fs.existsSync(backupPath)) {
+      console.log(`[Auto-Backup] Creating monthly backup for ${prevMonthStr}...`);
+      db.backup(backupPath);
+      console.log(`[Auto-Backup] Created monthly backup: ${filename}`);
+    }
+  }
+} catch (backupErr) {
+  console.error('[Auto-Backup] Failed to run monthly check:', backupErr.message);
+}
+
+// Run rolling safety daily backup on startup
+try {
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const lastBackupDateFile = path.join(BACKUP_DIR, '.last_daily_backup');
+  
+  let lastBackupDate = '';
+  if (fs.existsSync(lastBackupDateFile)) {
+    lastBackupDate = fs.readFileSync(lastBackupDateFile, 'utf8').trim();
+  }
+
+  if (lastBackupDate !== todayStr) {
+    console.log(`[Safety-Backup] Creating daily safety backup for ${todayStr}...`);
+    
+    const backup3 = path.join(BACKUP_DIR, 'mainframe_safety_3.db');
+    const backup2 = path.join(BACKUP_DIR, 'mainframe_safety_2.db');
+    const backup1 = path.join(BACKUP_DIR, 'mainframe_safety_1.db');
+    
+    // Rotate backups
+    if (fs.existsSync(backup2)) {
+      fs.copyFileSync(backup2, backup3);
+    }
+    if (fs.existsSync(backup1)) {
+      fs.copyFileSync(backup1, backup2);
+    }
+    
+    // Create new backup
+    db.backup(backup1);
+    
+    // Update last backup date
+    fs.writeFileSync(lastBackupDateFile, todayStr, 'utf8');
+    console.log('[Safety-Backup] Rolling safety backups updated (mainframe_safety_1.db created)');
+  }
+} catch (safetyErr) {
+  console.error('[Safety-Backup] Failed to run daily safety check:', safetyErr.message);
+}
 
 module.exports = { db, DB_PATH, BACKUP_DIR };

@@ -66,13 +66,12 @@ async function extractTextFromFile(file) {
  * Validates and sanitizes standard values for database enums
  */
 function sanitizePaymentMethod(method) {
-  const valid = ['Cash', 'UPI', 'Credit Card', 'Debit Card', 'Bank Transfer'];
   const normalized = method?.trim()?.toLowerCase();
   
   if (normalized?.includes('upi') || normalized?.includes('gpay') || normalized?.includes('phonepe') || normalized?.includes('paytm')) return 'UPI';
-  if (normalized?.includes('credit')) return 'Credit Card';
-  if (normalized?.includes('debit')) return 'Debit Card';
-  if (normalized?.includes('bank') || normalized?.includes('neft') || normalized?.includes('rtgs') || normalized?.includes('imps')) return 'Bank Transfer';
+  if (normalized === 'credit' || normalized?.includes('on credit') || normalized?.includes('due') || normalized?.includes('udhaar')) return 'Credit';
+  if (normalized?.includes('credit')) return 'Credit';
+  if (normalized?.includes('debit') || normalized?.includes('card') || normalized?.includes('bank') || normalized?.includes('neft') || normalized?.includes('rtgs') || normalized?.includes('imps')) return 'UPI';
   if (normalized?.includes('cash')) return 'Cash';
   
   return 'Cash'; // Default
@@ -177,9 +176,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     filePath = req.file.path;
     const originalName = req.file.originalname.toLowerCase();
+    const userPrompt = req.body.prompt ? String(req.body.prompt).trim() : '';
 
-    // 1. Try Fast Programmatic Excel/CSV Parsing
-    if (originalName.endsWith('.xlsx') || originalName.endsWith('.xls') || originalName.endsWith('.csv')) {
+    // 1. Try Fast Programmatic Excel/CSV Parsing (ONLY if no custom prompt is requested)
+    if (!userPrompt && (originalName.endsWith('.xlsx') || originalName.endsWith('.xls') || originalName.endsWith('.csv'))) {
       try {
         const workbook = XLSX.readFile(filePath);
         let hasValidSheet = false;
@@ -285,6 +285,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 You are a data extraction assistant for a local computer shop called "Mainframe Computers".
 Your job is to read the following text extracted from a business report and identify all SALES and EXPENSES.
 
+${userPrompt ? `USER CUSTOM INSTRUCTIONS/OPERATION:
+"${userPrompt}"
+Please apply this instruction when extracting the data (e.g. filtering, skipping, modifying values, dates, etc. as requested).` : ''}
+
 CRITICAL INSTRUCTIONS:
 1. Return ONLY a valid JSON object. No markdown formatting, no explanation, no \`\`\`json. Just the raw JSON.
 2. The JSON MUST follow this exact schema:
@@ -322,7 +326,7 @@ ${truncatedText}
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-      model: "qwen/qwen3.6-27b",
+      model: "qwen/qwen3-32b",
       temperature: 0.6,
       max_completion_tokens: 4096,
       top_p: 0.95,
@@ -429,12 +433,28 @@ router.post('/chat', async (req, res) => {
       FROM expenses WHERE date >= ? GROUP BY expense_title ORDER BY total DESC LIMIT 3
     `).all(thirtyDaysStr);
 
+    // Fetch previous calendar month stats
+    const now = new Date();
+    now.setDate(1);
+    now.setMonth(now.getMonth() - 1);
+    const prevYear = now.getFullYear();
+    const prevMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const prevMonthStr = `${prevYear}-${prevMonth}`; // "YYYY-MM"
+    
+    const prevMonthSales = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM sales WHERE date LIKE ?`).get(`${prevMonthStr}%`).total;
+    const prevMonthExpenses = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE date LIKE ?`).get(`${prevMonthStr}%`).total;
+
     let businessContext = `
-BUSINESS CONTEXT (LAST 30 DAYS):
-- Total Sales: ₹${salesStats?.totalSales || 0}
-- Total Expenses: ₹${expenseStats?.totalExpenses || 0}
-- Top Selling Products: ${topProducts.map(p => `${p.product_service} (₹${p.total})`).join(', ') || 'None'}
-- Top Expenses: ${topExpenses.map(e => `${e.expense_title} (₹${e.total})`).join(', ') || 'None'}
+BUSINESS CONTEXT:
+1. Last 30 Days:
+   - Total Sales: ₹${salesStats?.totalSales || 0}
+   - Total Expenses: ₹${expenseStats?.totalExpenses || 0}
+   - Top Selling Products: ${topProducts.map(p => `${p.product_service} (₹${p.total})`).join(', ') || 'None'}
+   - Top Expenses: ${topExpenses.map(e => `${e.expense_title} (₹${e.total})`).join(', ') || 'None'}
+2. Previous Calendar Month (${prevMonthStr}):
+   - Total Sales: ₹${prevMonthSales}
+   - Total Expenses: ₹${prevMonthExpenses}
+   - Net Profit: ₹${prevMonthSales - prevMonthExpenses}
     `;
     // ------------------------------
 
@@ -461,7 +481,7 @@ Respond ONLY with valid JSON.
         { role: "system", content: prompt },
         { role: "user", content: message }
       ],
-      model: "qwen/qwen3.6-27b",
+      model: "qwen/qwen3-32b",
       temperature: 0.6,
       max_completion_tokens: 4096,
       top_p: 0.95,

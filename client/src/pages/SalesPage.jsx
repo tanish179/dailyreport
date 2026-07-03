@@ -12,7 +12,7 @@ export default function SalesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('month');
   const [sort, setSort] = useState('newest');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');

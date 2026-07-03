@@ -5,7 +5,7 @@ const { db } = require('../database');
 // GET /api/dashboard/summary
 router.get('/summary', (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
     const monthStart = today.substring(0, 7) + '-01';
 
     // Today's stats
@@ -63,9 +63,9 @@ router.get('/summary', (req, res) => {
 // GET /api/dashboard/charts
 router.get('/charts', (req, res) => {
   try {
-    const today = new Date();
-    const thirtyDaysAgo = new Date(today - 30 * 86400000).toISOString().split('T')[0];
-    const monthStart = today.toISOString().split('T')[0].substring(0, 7) + '-01';
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toLocaleDateString('en-CA');
+    const monthStart = todayStr.substring(0, 7) + '-01';
 
     // Daily sales trend (last 30 days)
     const dailySales = db.prepare(`
